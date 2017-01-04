@@ -59,5 +59,6 @@ int modify_pixel(int ** pixel, enum filter_types filter_type);
 Image * parse_image(char * file_name);
 void write_image(int ** image_pixels, int width_start, int width_end,
   int height_start, int height_end, char * output_file);
-void apply_filter(int ** adjacent_matrix, int N, int rank, int parent,
-  char * input_file, char * output_file, enum filter_types filter_type);
+  void apply_filter(int ** adjacent_matrix, int N, int rank, int parent,
+    char * input_file, char * output_file, enum filter_types filter_type,
+    int * lines_processed);

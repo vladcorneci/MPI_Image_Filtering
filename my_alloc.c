@@ -3,7 +3,7 @@
 int *alloc_1d_int(int n)
 {
   int * array = (int *)malloc(n * sizeof(int));
-  memset(array, n, sizeof(int));
+  memset(array, 0, n * sizeof(int));
 }
 
 int **alloc_2d_int(int rows, int cols)

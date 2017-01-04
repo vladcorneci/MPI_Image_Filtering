@@ -57,7 +57,7 @@ int receive_sonda_ecou(int ** new_adjacent_matrix, int n, int source,
             MPI_ANY_TAG, MPI_COMM_WORLD, &status);
   matrix_or(new_adjacent_matrix, recv_matrix, n, n);
   *msg_type = status.MPI_TAG;
-
+  dealloc_2d_int(recv_matrix);
   return status.MPI_SOURCE;
 }
 

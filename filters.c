@@ -88,7 +88,8 @@ void write_image(int ** image_pixels, int width_start, int width_end,
 }
 
 void apply_filter(int ** adjacent_matrix, int N, int rank, int parent,
-  char * input_file, char * output_file, enum filter_types filter_type)
+  char * input_file, char * output_file, enum filter_types filter_type,
+  int * lines_processed)
 {
   int child_nodes_size;
   int * child_nodes =
@@ -208,6 +209,8 @@ void apply_filter(int ** adjacent_matrix, int N, int rank, int parent,
     no_echos--;
   }
 
+  // printf("%d, %d - %d = %d\n", rank, height_start, height_end, height_end - height_start);
+
   // Calculeaza pixeli (nod frunza) noi si/sau trimite mai departe (nod intermediar)
   if (rank != 0) {
     // Calculeaza pixeli
@@ -234,8 +237,8 @@ void apply_filter(int ** adjacent_matrix, int N, int rank, int parent,
           pixel_matrix[2][2] = image_pixels_copy[i + 1][j + 1];
           image_pixels[i][j] = modify_pixel(pixel_matrix, filter_type);
         }
-        // pixels_computed ++;
       }
+      lines_processed[rank] += height_end - height_start - 1;
       dealloc_2d_int(pixel_matrix);
       dealloc_2d_int(image_pixels_copy);
     }
