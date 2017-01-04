@@ -1,5 +1,11 @@
 #include "my_alloc.h"
 
+int *alloc_1d_int(int n)
+{
+  int * array = (int *)malloc(n * sizeof(int));
+  memset(array, n, sizeof(int));
+}
+
 int **alloc_2d_int(int rows, int cols)
 {
     int *data = (int *)malloc(rows*cols*sizeof(int));
@@ -18,6 +24,11 @@ char **alloc_2d_char(int rows, int cols)
         array[i] = &(data[cols*i]);
 
     return array;
+}
+
+void dealloc_1d_int(int * array)
+{
+  free(array);
 }
 
 void dealloc_2d_int(int ** matrix)
