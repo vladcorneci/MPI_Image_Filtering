@@ -1,0 +1,127 @@
+Corneci Vlad-Mihai, 335CC
+Algoritmi Paraleli si Distribuiti - Tema 3
+
+README
+------
+ * Intro
+ * Format fisiere
+ * Format filtre
+ * Implementare
+ * Concluzii
+
+Intro
+-----
+  Scopul acestei rezolvari este implementarea unei aplicatii distribuite de
+  procesare a unui set de imagini folosind procese modelate intr-o topologie de
+  tip graf.
+  Pentru simplitate se vor folosi doar imagini de tip .PGM.
+
+Usage:
+  Compilare:
+    make
+  Clean:
+    make clean
+  Rulare:
+    mpirun -np <nProcesses> <topologie.in.> <imagini.in> <statistica.out>
+
+Format fisiere
+--------------
+  Fisierele de input au urmatorul format:
+    Fisierul topologie.in:
+        nod'1': vecin'1' vecin'2' ... vecin'n'
+        .....................................
+        nod'n': vecin'1' vecin'2' ... vecin'n2'
+
+    Fisierul imagine.in:
+        <N imagini>
+        <filtru1> <imagine1.pgm> <imagine1_out.pgm>
+        ..........................................
+        <filtruN> <imagineN.pgm> <imagineN_out.pgm>
+
+  <statistica.out> reprezinta numele fisierului in care vor fi scrise statisti-
+  referitoare la numarul de linii de procesate / nod din topologie.
+
+
+Format filtre
+-------------
+  Pentru a implementa filtrele am declarat structura Filter.
+    Filter :
+      int matrix[FILTER_SIZE][FILTER_SIZE]
+      int fraction
+      int offset
+  Pentru aceasta rezolvare, FILTER_SIZE va avea valoarea 3.
+  Exemplu filtru smooth:
+      smooth_filter = { {
+      				       {1, 1, 1},
+      				       {1, 1, 1},
+      				       {1, 1, 1}}, 9, 0
+      };
+
+Implementare
+------------
+  Stabilirea arborelui de acoperire
+  ---------------------------------
+    Prima parte a aplicatiei isi propune stabilirea arborelui de acoperire pe
+    baza grafului primit in fisierul <topologie.in>. Arborele de acoperire va
+    fi stocat in memorie pe baza unei matrici de adiacenta. Aceasta alegere
+    a fost luata din motive de simplitate, scaland pentru numarul redus de
+    noduri din topologie.
+
+    In acest sens, se va rula un algoritm de tip unda, mai exact un algoritm
+    sonda-ecou pentru a stabili pentru fiecare nod parintele, respectiv copiii.
+
+    Exista 3 tipuri de mesaje:
+      - SONDAJ
+      - ECHO
+      - EMPTY_ECHO
+
+    Mesajul se propaga top-down, de la radacina inspre radacini. Un nod, la
+    primirea primului mesaj de tip SONDAJ, va marca nodul sursa ca parinte,
+    urmand a-i raspunde printr-un mesaj de tip ECHO atunci cand va detine infor-
+    matiile necesare de la propriile nodurile copil. In cazul in care un nod
+    primeste un al doi-lea mesaj de tip SONDAJ, atunci, acesta ii va raspunde
+    nodului sursa cu un mesaj de tip EMPTY_ECHO.
+
+    De fiecare data cand un nod primeste un mesaj de tip ECHO, acesta va face
+    functia 'or'/'sau' intre propria matrice de adiacenta si matricea primita.
+
+    In cursul algoritmului de stabilire a topologiei se vor trimite:
+      2|E|  - mesaje
+
+    Prelucrarea distribuita de imagini folosind filtre
+    --------------------------------------------------
+      In procesul de prelucrare a imaginilor, fiecare imagine este impartita in
+      P blocuri de pixeli. Fiecarei frunzie din arborele de acoperire fiindu-i
+      inaintat un bloc.
+
+      Fiecare imagine este impartita la nivelul unui nod intermediar in k bucati
+      unde k - numarul vecinilor ai nodului intermediar.
+
+      Nodul intermediar colecteaza toate rezultatele de la nodurile copil si le
+      intainteaza catre radacina. Astfel, la finalul algoritmului, radacina va
+      avea intreaga imagine prelucrata.
+      Dupa ce se aplica filtrul, imaginea prelucrata va fi scrisa in fisierul
+      descris de input.
+
+      In cursul de prelucrare a imaginilor vor circula 2|E| mesaje.
+
+    Statistici
+    ----------
+      In cursul prelucrarii de imagini, fiecare proces isi contorizeaza numarul
+      de linii prelucrate.
+      In momentul in care intregul proces de prelucrare a imaginilor se termina,
+      incepe procesul de colectare al statisticilor.
+      Acest proces este aseamanator cu cel al stabilirii topologiei, urmand un
+      algoritm de tip sonda-ecou.
+      Fiecare proces inainteaza catre parinte numarul de linii prelucrate de el,
+      respectiv de copiii lui, astfel la finalul algoritmului, radacina va
+      dispune de informatiile centralizate pentru toata topologia.
+
+      Radacina va scrie in fisierul <statistica.out> statisticile colectate.
+
+  Concluzii
+  ---------
+    Au fost implementate toate cerintele descrise in fisierul de cerinte.
+    Statisticile pot sa difere cu cele din fisierele de testare din motive de
+    impartire a blocurilor de imagini catre nodurile copil.
+    Statisticile sunt consistente.
