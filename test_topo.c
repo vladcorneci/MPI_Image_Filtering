@@ -6,31 +6,79 @@
 #include "topology.h"
 #include "filters.h"
 
-#define N 8
-
+#define N 12
 #define TERM_TAG 100
 
-// int adiacent_matrix[N][N] = {
-//   {0, 1, 1, 0, 0, 0 ,0, 1}, // 0
-//   {1, 0, 0, 1, 1, 1, 0, 0}, // 1
-//   {1, 0, 0, 0, 0, 0, 1, 0}, // 2
-//   {0, 1, 0, 0, 0, 0, 0, 0}, // 3
-//   {0, 1, 0, 0, 0, 1, 0, 0}, // 4
-//   {0, 1, 0, 0, 1, 0, 0, 0}, // 5
-//   {0, 0, 1, 0, 0, 0, 0, 0}, // 6
-//   {1, 0, 0, 0, 0, 0, 0, 0}  // 7
-// };
+void read_topology(char * file_name, int **adjacent_matrix, int rank)
+{
+  const char s[4] = ": \n";
+  char *token;
+  FILE * fp = fopen(file_name, "r");
+  char * line = NULL;
+  size_t len = 0;
+  int current_line = -1, buff;
+  if (!fp) {
+    printf("Topology file error.\n");
+    exit(1);
+  }
 
-int adiacent_matrix[N][N] = {
-  {0, 1, 0, 0, 0, 0 ,0, 0}, // 0
-  {1, 0, 0, 1, 0, 0, 0, 0}, // 1
-  {0, 0, 0, 0, 1, 0, 0, 0}, // 2
-  {0, 1, 0, 0, 1, 0, 0, 0}, // 3
-  {0, 0, 1, 1, 0, 1, 1, 1}, // 4
-  {0, 0, 0, 0, 1, 0, 0, 0}, // 5
-  {0, 0, 0, 0, 1, 0, 0, 0}, // 6
-  {0, 0, 0, 0, 1, 0, 0, 0}  // 7
-};
+  while (getline(&line, &len, fp) != -1) {
+    int is_first = 1;
+    /* get the first token */
+    token = strtok(line, s);
+    /* walk through other tokens */
+    while(token != NULL) {
+      if (is_first) {
+        current_line = atoi(token);
+        if (current_line != rank)
+          break;
+        is_first = 0;
+      } else {
+        buff = atoi(token);
+        adjacent_matrix[current_line][buff] = 1;
+      }
+      token = strtok(NULL, s);
+    }
+  }
+}
+
+enum filter_types check_type(char * str_type)
+{
+  if (!strcmp(str_type, "sharpen")) {
+    return SHARPEN;
+  } else if (!strcmp(str_type, "smooth")) {
+    return SMOOTH;
+  } else if (!strcmp(str_type, "mean_removal")) {
+    return MEAN_REMOVAL;
+  } else if (!strcmp(str_type, "blur")) {
+    return BLUR;
+  }
+  return SHARPEN;
+}
+
+int * process_images (char * images_file, int ** adjacent_matrix, int dim,
+  int rank, int parent) {
+  int n;
+  int * lines_processed = alloc_1d_int(dim);
+  FILE * fp = fopen(images_file, "r");
+  char filter_type_str[255], file_in[255], file_out[255];
+
+  if (!fp) {
+    printf("Images file error.\n");
+    exit(1);
+  }
+
+  fscanf(fp, "%d\n", &n);
+  for (int i = 0; i < n; ++i) {
+    fscanf(fp, "%s", filter_type_str);
+    fscanf(fp, "%s", file_in);
+    fscanf(fp, "%s", file_out);
+    enum filter_types filter = check_type(&(filter_type_str[0]));
+    apply_filter(adjacent_matrix, dim, rank, parent,
+      file_in, file_out, filter, lines_processed);
+  }
+  return lines_processed;
+}
 
 void receive_term(int * new_count, int n, int source)
 {
@@ -61,54 +109,18 @@ int main(int argc, char * argv[])
   int ** adjacent_matrix = alloc_2d_int(N, N);
   int ** null_matrix = alloc_2d_int(N, N);
 
-
-  for (i = 0; i < N; ++i) {
-    for (j = 0; j < N; ++j) {
-      if (i == rank) adjacent_matrix[i][j] = adiacent_matrix[i][j];
-      else adjacent_matrix[i][j] = 0;
-
-      null_matrix[i][j] = 0;
-    }
-  }
-
+  read_topology(argv[1], adjacent_matrix, rank);
   find_topology(adjacent_matrix, N, rank, null_matrix, &parent);
-  int * lines_processed = alloc_1d_int(N);
-  {
-    enum filter_types filter = MEAN_REMOVAL;
-    char * input_image  = "pics/mario.pgm";
-    char * output_image = "output.pgm";
-    apply_filter(adjacent_matrix, N, rank, parent,
-      input_image, output_image, filter, lines_processed);
-  }
-  {
-    enum filter_types filter = MEAN_REMOVAL;
-    char * input_image  = "pics/vled.pgm";
-    char * output_image = "output2.pgm";
-    apply_filter(adjacent_matrix, N, rank, parent,
-      input_image, output_image, filter, lines_processed);
-  }
-  {
-    enum filter_types filter = MEAN_REMOVAL;
-    char * input_image  = "pics/image1.pgm";
-    char * output_image = "output3.pgm";
-    apply_filter(adjacent_matrix, N, rank, parent,
-      input_image, output_image, filter, lines_processed);
-  }
+  int * lines_processed = process_images(argv[2], adjacent_matrix, N, rank, parent);
 
-
-  // int neighbors_size, no_echos = 0;
-  // int * neighbors = get_neighbors(adjacent_matrix, N, rank, &neighbors_size);
-  //
-
+  /* Get statistics */
   int child_nodes_size, no_echos = 0;
   int * child_nodes =
     get_child_nodes(adjacent_matrix, N, rank, &child_nodes_size, parent);
+
   if (rank != 0) {
     receive_term(lines_processed, N, parent);
-  //   int tag;
-  //   parent = receive_sonda_ecou(adjacent_matrix, N, MPI_ANY_SOURCE, &tag);
   }
-
 
   for (int i = 0; i < child_nodes_size; ++i) {
     send_term(child_nodes[i], lines_processed, N);
@@ -134,85 +146,11 @@ int main(int argc, char * argv[])
   }
 
 
-  //
-  // // Send sondaj
-  // for (i = 0; i < neighbors_size; ++i) {
-  //   if (neighbors[i] != parent) {
-  //     send_sonda_ecou(SONDAJ, neighbors[i], null_matrix, N);
-  //     no_echos ++;
-  //   }
-  // }
-  //
-  // // Wait for echos
-  // while (no_echos > 0) {
-  //   int tag;
-  //   int source = receive_sonda_ecou(adjacent_matrix, N, MPI_ANY_SOURCE, &tag);
-  //   if (tag == EMPTY_ECHO) {
-  //     adjacent_matrix[rank][source] = 0;
-  //   }
-  //   if (tag == SONDAJ) {
-  //     send_sonda_ecou(EMPTY_ECHO, source, null_matrix, N);
-  //   } else {
-  //     no_echos--;
-  //   }
-  // }
-  //
-  // // Propaga in sus
-  // if (rank != 0) {
-  //   send_sonda_ecou(ECHO, parent, adjacent_matrix, N);
-  // }
-
-
-
   dealloc_1d_int(lines_processed);
   dealloc_2d_int(adjacent_matrix);
   dealloc_2d_int(null_matrix);
 
   // parent must have the solution
-
-
-  // Send images
-
-  // if (p <> inițiator)
-  //     receive sondă-ecou[p](k, top_nou);
-  //     mark as  parent source
-  //
-  //  /* transmite sondaje celorlalte noduri vecine, copiii lui p */
-  //  for [q = 1 to N st (leg[q] AND (q <> părinte))] {
-  //     send sondă-ecou[q](sondă, p, O);  /* topologie nulă */
-  //     nr_ecouri = nr_ecouri + 1;
-  //  }
-  // while (nr_ecouri > 0) {
-  //     receive sondă-ecou[p](k, transm, top_nou);
-  //
-  ////// fara sonda
-  //     if (k == sondă)
-  //        send sondă-ecou[transm](ecou, p, O);
-  //     else if (k == ecou) {
-  //        top = top OR top_nou;
-  //        nr_ecouri = nr_ecouri – 1;
-  //     }
-  //  }
-  //
-  //  if (p <> inițiator)
-  //     send sondă-ecou[părinte](ecou, p, top);
-
-  // if (rank == 0) {
-  //   for (i = 0; i < N; ++i) {
-  //     printf("Leaf:%d, %d : ",is_leaf(adjacent_matrix, N, i), i);
-  //     for (j = 0; j < N; ++j) {
-  //       if (adjacent_matrix[i][j] != adiacent_matrix[i][j]) {
-  //         // printf("error\n" );
-  //       }
-  //       if (adjacent_matrix[i][j]) {
-  //         printf("%d ", j);
-  //       } else {
-  //         // printf("%d ", adjacent_matrix[i][j]);
-  //       }
-  //     }
-  //     printf("\n" );
-  //   }
-  // }
 
   MPI_Finalize();
   return 0;

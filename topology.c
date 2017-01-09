@@ -1,4 +1,5 @@
 #include "topology.h"
+#include <stdio.h>
 
 void init_neighbors(int * a, int n)
 {
@@ -8,11 +9,11 @@ void init_neighbors(int * a, int n)
 
 int * get_neighbors(int ** adjacent_matrix, int n, int rank, int * size)
 {
-  int j, k = 0;
+  int k = 0;
   *size = 0;
   int * neighbors = (int *) malloc (n * 4);
   init_neighbors(neighbors, n);
-  for (j = 0; j < n; ++j) {
+  for (int j = 0; j < n; ++j) {
     if (adjacent_matrix[rank][j]){
       neighbors[k ++] = j;
       (*size) ++;
@@ -74,15 +75,20 @@ void find_topology(int ** adjacent_matrix, int N, int rank, int ** null_matrix,
   int neighbors_size, no_echos = 0, i;
   int * neighbors = get_neighbors(adjacent_matrix, N, rank, &neighbors_size);
 
+// printf("%d\n", rank);
+
   if (rank != 0) {
     int tag;
     *parent = receive_sonda_ecou(adjacent_matrix, N, MPI_ANY_SOURCE, &tag);
   }
+  // printf("%d %d\n", rank, *parent);
+
 
   // Send sondaj
   for (i = 0; i < neighbors_size; ++i) {
     if (neighbors[i] != *parent) {
       send_sonda_ecou(SONDAJ, neighbors[i], null_matrix, N);
+      // printf("%d %d\n", rank, *parent);
       no_echos ++;
     }
   }
