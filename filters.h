@@ -11,54 +11,64 @@
 #define TAG_RESULT  420
 
 typedef struct {
-    int matrix[FILTER_SIZE][FILTER_SIZE];
-    int fraction;
-    int offset;
-}Filter;
+	int matrix[FILTER_SIZE][FILTER_SIZE];
+	int fraction;
+	int offset;
+} Filter;
 
 typedef struct {
-  int ** pixels;
-  int width;
-  int height;
-}Image;
+	int **pixels;
+	int width;
+	int height;
+} Image;
 
-enum filter_types { SMOOTH, BLUR, SHARPEN, MEAN_REMOVAL, EMBOSS, EDGE_DETECTION};
+enum filter_types { SMOOTH, BLUR, SHARPEN, MEAN_REMOVAL, EMBOSS,
+	    EDGE_DETECTION };
 
-const static Filter smooth_filter = {{
-  {1, 1, 1},
-  {1, 1, 1},
-  {1, 1, 1}}, 9, 0};
+const static Filter smooth_filter = { {
+				       {1, 1, 1},
+				       {1, 1, 1},
+				       {1, 1, 1}}, 9, 0
+};
 
-const static Filter blur_filter = {{
-  {1, 2, 1},
-  {2, 4, 2},
-  {1, 2, 1}}, 16, 0};
+const static Filter blur_filter = { {
+				     {1, 2, 1},
+				     {2, 4, 2},
+				     {1, 2, 1}}, 16, 0
+};
 
-const static Filter sharpen_filter = {{
-  {0,  -2,  0},
-  {-2, 11, -2},
-  {0,  -2,  0}}, 3, 0};
+const static Filter sharpen_filter = { {
+					{0, -2, 0},
+					{-2, 11, -2},
+					{0, -2, 0}}, 3, 0
+};
 
-const static Filter mean_removal_filter = {{
-  {-1, -1, -1},
-  {-1,  9, -1},
-  {-1, -1, -1}}, 1, 0};
+const static Filter mean_removal_filter = { {
+					     {-1, -1, -1},
+					     {-1, 9, -1},
+					     {-1, -1, -1}}, 1, 0
+};
 
-const static Filter emboss_filter = {{
-  {-1, -1, 0},
-  {-1,  0, -1},
-  {0,   1, 1}}, 1, 128};
+const static Filter emboss_filter = { {
+				       {-1, -1, 0},
+				       {-1, 0, -1},
+				       {0, 1, 1}}, 1, 128
+};
 
-const static Filter edge_detection_filter = {{
-  {-1, -1, -1},
-  {-1,  8, -1},
-  {-1, -1, -1}}, 1, 0};
+const static Filter edge_detection_filter = { {
+					       {-1, -1, -1},
+					       {-1, 8, -1},
+					       {-1, -1, -1}}, 1, 0
+};
 
-int conv_matrix(int ** pixel, Filter filter);
-int modify_pixel(int ** pixel, enum filter_types filter_type);
-Image * parse_image(char * file_name);
-void write_image(int ** image_pixels, int width_start, int width_end,
-  int height_start, int height_end, char * output_file);
-  void apply_filter(int ** adjacent_matrix, int N, int rank, int parent,
-    char * input_file, char * output_file, enum filter_types filter_type,
-    int * lines_processed);
+enum filter_types check_type(char *str_type);
+int conv_matrix(int **pixel, Filter filter);
+int modify_pixel(int **pixel, enum filter_types filter_type);
+Image *parse_image(char *file_name);
+void write_image(int **image_pixels, int width_start, int width_end,
+		 int height_start, int height_end, char *output_file);
+void apply_filter(int **adjacent_matrix, int N, int rank, int parent,
+		  char *input_file, char *output_file,
+		  enum filter_types filter_type, int *lines_processed);
+int *process_images(char *images_file, int **adjacent_matrix, int dim, int rank,
+		    int parent);
